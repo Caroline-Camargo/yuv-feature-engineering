@@ -1,0 +1,352 @@
+#include <opencv2/opencv.hpp>
+#include <array>
+#include <iostream>
+#include <vector>
+#include <iomanip>
+#include <cmath>
+
+// =======================================================
+// 1D Fast Walsh-Hadamard Transform (in-place)
+// =======================================================
+inline void fwht_1d(cv::Mat& vec) {
+    int n = vec.cols > 1 ? vec.cols : vec.rows;
+    for (int len = 1; len < n; len <<= 1) {
+        for (int i = 0; i < n; i += len << 1) {
+            for (int j = 0; j < len; j++) {
+                float u = vec.at<float>(i + j);
+                float v = vec.at<float>(i + j + len);
+                vec.at<float>(i + j) = u + v;
+                vec.at<float>(i + j + len) = u - v;
+            }
+        }
+    }
+}
+
+// =======================================================
+// 2D Hadamard Transform
+// =======================================================
+inline cv::Mat fwht_2d(const cv::Mat& blk) {
+    cv::Mat H;
+    blk.convertTo(H, CV_32F);
+    // linhas
+    for (int r = 0; r < H.rows; r++) {
+        cv::Mat row = H.row(r);
+        fwht_1d(row);
+    }
+    // colunas
+    for (int c = 0; c < H.cols; c++) {
+        cv::Mat col = H.col(c);
+        fwht_1d(col);
+    }
+    return H;
+}
+
+// =======================================================
+// 1. FEATURE 1 — Média, Variância, StdDev e Soma
+// =======================================================
+inline std::tuple<double,double,double,double> calculate_basic_features_cv(const cv::Mat& blk)
+{
+    cv::Mat blk_f;
+    blk.convertTo(blk_f, CV_32F);
+    cv::Scalar mean, stddev;
+    cv::meanStdDev(blk_f, mean, stddev);
+    double var = stddev[0]*stddev[0];
+    double sum = cv::sum(blk_f)[0];
+    return {mean[0], var, stddev[0], sum};
+}
+
+// =======================================================
+// 2. FEATURE 2 — vH, vV, dH, dV
+// =======================================================
+inline std::array<double,4> calculate_stats_cv(const cv::Mat& blk)
+{
+    cv::Mat blk_f;
+    blk.convertTo(blk_f, CV_32F);
+
+    cv::Mat row_means; cv::reduce(blk_f, row_means, 1, cv::REDUCE_AVG);
+    cv::Mat row_means_exp; cv::repeat(row_means, 1, blk_f.cols, row_means_exp);
+    cv::Mat diff_row = blk_f - row_means_exp;
+    cv::Mat row_vars; cv::reduce(diff_row.mul(diff_row), row_vars, 1, cv::REDUCE_AVG);
+    cv::Mat row_stds; cv::sqrt(row_vars, row_stds);
+    double vH = cv::mean(row_vars)[0], dH = cv::mean(row_stds)[0];
+
+    cv::Mat col_means; cv::reduce(blk_f, col_means, 0, cv::REDUCE_AVG);
+    cv::Mat col_means_exp; cv::repeat(col_means, blk_f.rows, 1, col_means_exp);
+    cv::Mat diff_col = blk_f - col_means_exp;
+    cv::Mat col_vars; cv::reduce(diff_col.mul(diff_col), col_vars, 0, cv::REDUCE_AVG);
+    cv::Mat col_stds; cv::sqrt(col_vars, col_stds);
+    double vV = cv::mean(col_vars)[0], dV = cv::mean(col_stds)[0];
+
+    return {vH, vV, dV, dH};
+}
+
+// =======================================================
+// 3. FEATURE 3 — Gradientes Sobel
+// =======================================================
+inline std::array<double,5> calculate_gradients_sobel_cv(const cv::Mat& blk)
+{
+    cv::Mat blk_f; blk.convertTo(blk_f, CV_32F);
+    cv::Mat Gh, Gv;
+    cv::Sobel(blk_f, Gh, CV_32F, 1, 0, 3, 1, 0, cv::BORDER_REPLICATE);
+    cv::Sobel(blk_f, Gv, CV_32F, 0, 1, 3, 1, 0, cv::BORDER_REPLICATE);
+    double mGv = cv::mean(cv::abs(Gv))[0];
+    double mGh = cv::mean(cv::abs(Gh))[0];
+    cv::Mat Mag, Dir; cv::magnitude(Gv, Gh, Mag); cv::phase(Gh, Gv, Dir, true);
+    double meanMag = cv::mean(Mag)[0];
+    double meanDir = cv::mean(Dir)[0];
+    double razao_grad = mGh/(mGv + 1e-6);
+    return {mGv, mGh, meanMag, meanDir, razao_grad};
+}
+
+// =======================================================
+// 4. FEATURE 4 — Gradientes Prewitt
+// =======================================================
+inline std::array<double,5> calculate_gradients_prewitt_cv(const cv::Mat& blk)
+{
+    cv::Mat blk_f; blk.convertTo(blk_f, CV_32F);
+    cv::Mat kernel_gx = (cv::Mat_<float>(3,3) << -1,0,1,-1,0,1,-1,0,1);
+    cv::Mat kernel_gy = (cv::Mat_<float>(3,3) << -1,-1,-1,0,0,0,1,1,1);
+    cv::Mat Gh, Gv;
+    cv::filter2D(blk_f, Gh, CV_32F, kernel_gx, cv::Point(-1,-1), 0, cv::BORDER_REPLICATE);
+    cv::filter2D(blk_f, Gv, CV_32F, kernel_gy, cv::Point(-1,-1), 0, cv::BORDER_REPLICATE);
+    double mGv = cv::mean(cv::abs(Gv))[0];
+    double mGh = cv::mean(cv::abs(Gh))[0];
+    cv::Mat Mag, Dir; cv::magnitude(Gv, Gh, Mag); cv::phase(Gh, Gv, Dir, true);
+    double meanMag = cv::mean(Mag)[0];
+    double meanDir = cv::mean(Dir)[0];
+    double razao_grad = mGh/(mGv + 1e-6);
+    return {mGv, mGh, meanMag, meanDir, razao_grad};
+}
+
+// =======================================================
+// 5. FEATURE 5 — Contraste
+// =======================================================
+inline std::array<double,3> calculate_contrast_features_cv(const cv::Mat& blk)
+{
+    double minVal, maxVal;
+    cv::minMaxLoc(blk, &minVal, &maxVal);
+    return {minVal, maxVal, maxVal - minVal};
+}
+
+// =======================================================
+// 6. FEATURE 6 — Nitidez (variância do Laplaciano)
+// =======================================================
+inline double calculate_laplacian_var_cv(const cv::Mat& blk)
+{
+    cv::Mat blk_f; 
+    blk.convertTo(blk_f, CV_32F);
+    cv::Mat lap;
+    cv::Laplacian(blk_f, lap, CV_32F, 1, 1, 0);
+    cv::Scalar mean, stddev;
+    cv::meanStdDev(lap, mean, stddev);     
+    return stddev[0]*stddev[0];
+}
+
+
+// =======================================================
+// 7. FEATURE 7 — Entropia de Shannon
+// =======================================================
+inline double calculate_entropy_cv(const cv::Mat& blk)
+{
+    int histSize = 256;
+    float range[] = {0,256};
+    const float* histRange = {range};
+    cv::Mat hist;
+    cv::calcHist(&blk, 1, 0, cv::Mat(), hist, 1, &histSize, &histRange);
+    hist /= cv::sum(hist)[0];
+
+    double entropy = 0.0;
+    for(int i=0;i<histSize;i++) {
+        float p = hist.at<float>(i);
+        if(p>0) entropy -= p*log2(p);
+    }
+    return entropy;
+}
+
+// =======================================================
+// 8. FEATURE 8 — Hadamard
+// =======================================================
+struct HadamardFeatures {
+    double dc;
+    double energy_total;
+    double energy_ac;
+    double max_coef;
+    double min_coef;
+    double top_left;
+    double top_right;
+    double bottom_left;
+    double bottom_right;
+};
+
+inline HadamardFeatures calculate_hadamard_features(const cv::Mat& blk)
+{
+    cv::Mat H = fwht_2d(blk);
+    HadamardFeatures f{};
+    f.dc = H.at<float>(0,0);
+    f.energy_total = cv::sum(H.mul(H))[0];
+    f.energy_ac = f.energy_total - f.dc*f.dc;
+    double minVal,maxVal; cv::minMaxLoc(H,&minVal,&maxVal);
+    f.min_coef = minVal; f.max_coef = maxVal;
+    f.top_left = H.at<float>(0,0);
+    f.top_right = H.at<float>(0,H.cols-1);
+    f.bottom_left = H.at<float>(H.rows-1,0);
+    f.bottom_right = H.at<float>(H.rows-1,H.cols-1);
+    return f;
+}
+
+// =======================================================
+// STRUCT PRINCIPAL
+// =======================================================
+struct BlockFeatures {
+    double blk_pixel_mean;
+    double blk_pixel_variance;
+    double blk_pixel_std_dev;
+    double blk_pixel_sum;
+    double blk_var_h;
+    double blk_var_v;
+    double blk_std_v;
+    double blk_std_h;
+    double blk_sobel_gv;
+    double blk_sobel_gh;
+    double blk_sobel_mag;
+    double blk_sobel_dir;
+    double blk_sobel_razao_grad;
+    double blk_prewitt_gv;
+    double blk_prewitt_gh;
+    double blk_prewitt_mag;
+    double blk_prewitt_dir;
+    double blk_prewitt_razao_grad;
+    double blk_min;
+    double blk_max;
+    double blk_range;
+    double blk_laplacian_var;
+    double blk_entropy;
+
+    // Hadamard
+    HadamardFeatures hadamard;
+};
+
+// =======================================================
+// EXTRAÇÃO PRINCIPAL
+// =======================================================
+inline BlockFeatures extract_block_features(const cv::Mat& blk)
+{
+    BlockFeatures f{};
+    auto [mean,var,std_dev,sum_val] = calculate_basic_features_cv(blk);
+    f.blk_pixel_mean = mean; f.blk_pixel_variance = var; f.blk_pixel_std_dev = std_dev; f.blk_pixel_sum = sum_val;
+
+    auto stats = calculate_stats_cv(blk);
+    f.blk_var_h = stats[0]; f.blk_var_v = stats[1]; f.blk_std_v = stats[2]; f.blk_std_h = stats[3];
+
+    auto sob = calculate_gradients_sobel_cv(blk);
+    f.blk_sobel_gv = sob[0]; f.blk_sobel_gh = sob[1]; f.blk_sobel_mag = sob[2]; f.blk_sobel_dir = sob[3]; f.blk_sobel_razao_grad = sob[4];
+
+    auto pre = calculate_gradients_prewitt_cv(blk);
+    f.blk_prewitt_gv = pre[0]; f.blk_prewitt_gh = pre[1]; f.blk_prewitt_mag = pre[2]; f.blk_prewitt_dir = pre[3]; f.blk_prewitt_razao_grad = pre[4];
+
+    auto contrast = calculate_contrast_features_cv(blk);
+    f.blk_min = contrast[0]; f.blk_max = contrast[1]; f.blk_range = contrast[2];
+
+    f.blk_laplacian_var = calculate_laplacian_var_cv(blk);
+    f.blk_entropy = calculate_entropy_cv(blk);
+
+    f.hadamard = calculate_hadamard_features(blk);
+    return f;
+}
+
+// =======================================================
+// IMPRIMIR
+// =======================================================
+void print_features(const BlockFeatures& f)
+{
+    std::cout << std::fixed << std::setprecision(6);
+    std::cout << " mean = " << f.blk_pixel_mean << "\n";
+    std::cout << " var  = " << f.blk_pixel_variance << "\n";
+    std::cout << " std  = " << f.blk_pixel_std_dev << "\n";
+    std::cout << " sum  = " << f.blk_pixel_sum << "\n";
+    std::cout << " vH   = " << f.blk_var_h << "\n";
+    std::cout << " vV   = " << f.blk_var_v << "\n";
+    std::cout << " dV   = " << f.blk_std_v << "\n";
+    std::cout << " dH   = " << f.blk_std_h << "\n";
+    std::cout << " sob_Gv  = " << f.blk_sobel_gv << "\n";
+    std::cout << " sob_Gh  = " << f.blk_sobel_gh << "\n";
+    std::cout << " sob_mag = " << f.blk_sobel_mag << "\n";
+    std::cout << " sob_dir = " << f.blk_sobel_dir << "\n";
+    std::cout << " sob_razao = " << f.blk_sobel_razao_grad << "\n";
+    std::cout << " pre_Gv  = " << f.blk_prewitt_gv << "\n";
+    std::cout << " pre_Gh  = " << f.blk_prewitt_gh << "\n";
+    std::cout << " pre_mag = " << f.blk_prewitt_mag << "\n";
+    std::cout << " pre_dir = " << f.blk_prewitt_dir << "\n";
+    std::cout << " pre_razao = " << f.blk_prewitt_razao_grad << "\n";
+    std::cout << " min = " << f.blk_min << ", max = " << f.blk_max << ", range = " << f.blk_range << "\n";
+    std::cout << " lap_var = " << f.blk_laplacian_var << "\n";
+    std::cout << " entropy = " << f.blk_entropy << "\n";
+
+    std::cout << " H_dc           = " << f.hadamard.dc << "\n";
+    std::cout << " H_energy_total = " << f.hadamard.energy_total << "\n";
+    std::cout << " H_energy_ac    = " << f.hadamard.energy_ac << "\n";
+    std::cout << " H_max          = " << f.hadamard.max_coef << "\n";
+    std::cout << " H_min          = " << f.hadamard.min_coef << "\n";
+    std::cout << " H_top_left     = " << f.hadamard.top_left << "\n";
+    std::cout << " H_top_right    = " << f.hadamard.top_right << "\n";
+    std::cout << " H_bottom_left  = " << f.hadamard.bottom_left << "\n";
+    std::cout << " H_bottom_right = " << f.hadamard.bottom_right << "\n";
+}
+
+// =======================================================
+// MAIN (teste com blocos)
+// =======================================================
+
+int main()
+{
+    std::vector<cv::Mat> blocks;
+
+    // ---------------- BLOCK 1 ----------------
+    blocks.emplace_back((cv::Mat_<float>(8,4) <<
+         26, 90,125, 69,
+         16,115,193, 78,
+         31, 78,101, 92,
+         44, 82, 67, 85,
+         26, 71,123, 91,
+         72, 75,120,137,
+        149,107, 93,139,
+         86, 90, 79, 83
+    ));
+
+    // ---------------- BLOCK 2 ----------------
+    blocks.emplace_back((cv::Mat_<float>(8,4) <<
+         41, 54, 48, 52,
+         41, 50, 51, 50,
+         58, 48, 52, 51,
+         68, 40, 57, 51,
+        105, 49, 42, 47,
+        170,107, 99, 64,
+        146,141,125,129,
+         97,117, 88, 89
+    ));
+
+    // ---------------- BLOCK 3 ----------------
+    blocks.emplace_back((cv::Mat_<float>(4,8) <<
+        50,51,53,52,51,52,52,50,
+        51,52,52,52,51,50,51,50,
+        53,50,50,49,51,55,53,50,
+        52,58,57,54,51,45,56,54
+    ));
+
+    // ---------------- BLOCK 4 ----------------
+    blocks.emplace_back((cv::Mat_<float>(4,8) <<
+         48, 42, 49, 54, 50, 72, 59, 57,
+         74,121,133, 98, 52,122,154,146,
+         99,181,106, 85, 68, 68,107, 96,
+         97, 97, 66, 84, 68, 74,123, 45
+    ));
+
+    for (size_t i = 0; i < blocks.size(); i++)
+    {
+        std::cout << "\n============ BLOCK " << (i+1) << " ============\n";
+        BlockFeatures f = extract_block_features(blocks[i]);
+        print_features(f);
+    }
+
+    return 0;
+}
