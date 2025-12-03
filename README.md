@@ -1,128 +1,128 @@
 # 📌 yuv-feature-engineering
 
-Extração e engenharia de features a partir de blocos Y de vídeos YUV para análise de vídeo e aplicações de machine learning.  
-O pipeline lê um CSV com posições de blocos, carrega os frames correspondentes dos vídeos YUV e calcula um conjunto extenso de atributos estatísticos, estruturais e frequenciais.
+Feature extraction and engineering from Y luma blocks of YUV videos for video analysis and machine learning applications.
+The pipeline reads a CSV with block positions, loads the corresponding frames from YUV videos, and computes an extensive set of statistical, structural, and frequency-based attributes.
 
 ---
 
-# 📂 Funcionalidades Principais
+## 📂 Key Features
 
-- Processamento eficiente de CSV em _chunks_ (suporta arquivos muito grandes).
-- Extração direta dos blocos Y (luma) a partir de vídeos YUV 4:2:0.
-- Cálculo de features estatísticas, estruturais, direcionais, de textura e de transformada.
-- Suporte a vídeos 8-bit e 10-bit.
-- Suporte a múltiplas bases de vídeos (4k, 1080p, 720p, JVET, CTC etc.).
-- Escrita incremental de novo CSV com todas as features adicionadas.
-
----
-
-# 🧠 **Descrição das Features Extraídas**
-
-A seguir estão todas as features calculadas pelo pipeline, organizadas por categoria.
+- Efficient CSV processing in chunks (supports very large files).
+- Direct extraction of Y (luma) blocks from YUV 4:2:0 videos.
+- Calculation of statistical, structural, directional, texture and transform features.
+- Support for 8-bit and 10-bit videos.
+- Support for multiple video datasets/resolutions (4K, 1080p, 720p, JVET, CTC, etc.).
+- Incremental writing of a new CSV with all features appended.
 
 ---
 
-## **1. Estatísticas Básicas (stats_bases)**
+## 🧠 Extracted Features Description
 
-| Feature              | Descrição                        |
-| -------------------- | -------------------------------- |
-| `blk_pixel_mean`     | Média dos pixels do bloco.       |
-| `blk_pixel_variance` | Variância dos pixels do bloco.   |
-| `blk_pixel_std_dev`  | Desvio padrão.                   |
-| `blk_pixel_sum`      | Soma total dos valores do bloco. |
+Below are all features computed by the pipeline, organized by category.
 
 ---
 
-## **2. Estatísticas Direcionais (stats_bases)**
+### 1. Basic Statistics (stats_bases)
 
-| Feature     | Descrição                               |
-| ----------- | --------------------------------------- |
-| `blk_var_h` | Variância média por linha (horizontal). |
-| `blk_var_v` | Variância média por coluna (vertical).  |
-| `blk_std_h` | Desvio padrão médio por linha.          |
-| `blk_std_v` | Desvio padrão médio por coluna.         |
-
----
-
-## **3. Contraste e Nitidez (stats_bases)**
-
-| Feature             | Descrição                                            |
-| ------------------- | ---------------------------------------------------- |
-| `blk_min`           | Valor mínimo do bloco.                               |
-| `blk_max`           | Valor máximo.                                        |
-| `blk_range`         | Amplitude (max − min).                               |
-| `blk_laplacian_var` | Variância do Laplaciano (indicador de nitidez/blur). |
+| Feature              | Description                         |
+| -------------------- | ----------------------------------- |
+| `blk_pixel_mean`     | Mean value of block pixels.         |
+| `blk_pixel_variance` | Variance of block pixels.           |
+| `blk_pixel_std_dev`  | Standard deviation.                 |
+| `blk_pixel_sum`      | Sum of all pixel values in the block.|
 
 ---
 
-## **4. Complexidade / Textura**
+### 2. Directional Statistics (stats_bases)
 
-| Feature       | Descrição                                               |
-| ------------- | ------------------------------------------------------- |
-| `blk_entropy` | Entropia de Shannon do bloco (complexidade da textura). |
-
----
-
-## **5. Gradientes Sobel (grad_bases_sobel)**
-
-| Feature                | Descrição                                |
-| ---------------------- | ---------------------------------------- |
-| `blk_sobel_gv`         | Gradiente vertical (bordas horizontais). |
-| `blk_sobel_gh`         | Gradiente horizontal (bordas verticais). |
-| `blk_sobel_mag`        | Magnitude média do gradiente.            |
-| `blk_sobel_dir`        | Direção média (em graus).                |
-| `blk_sobel_razao_grad` | Razão gh / gv.                           |
+| Feature     | Description                                      |
+| ----------- | ------------------------------------------------ |
+| `blk_var_h` | Average variance per row (horizontal).           |
+| `blk_var_v` | Average variance per column (vertical).          |
+| `blk_std_h` | Average standard deviation per row.              |
+| `blk_std_v` | Average standard deviation per column.           |
 
 ---
 
-## **6. Gradientes Prewitt (grad_bases_prewitt)**
+### 3. Contrast and Sharpness (stats_bases)
 
-| Feature                  | Descrição                         |
-| ------------------------ | --------------------------------- |
-| `blk_prewitt_gv`         | Gradiente vertical via Prewitt.   |
-| `blk_prewitt_gh`         | Gradiente horizontal via Prewitt. |
-| `blk_prewitt_mag`        | Magnitude média via Prewitt.      |
-| `blk_prewitt_dir`        | Direção média via Prewitt.        |
-| `blk_prewitt_razao_grad` | Razão gh / gv (Prewitt).          |
-
----
-
-## **7. Transformada de Hadamard (hadamard_bases)**
-
-| Feature                | Descrição                                    |
-| ---------------------- | -------------------------------------------- |
-| `blk_had_dc`           | Coeficiente DC (brilho geral).               |
-| `blk_had_energy_total` | Soma dos quadrados de todos os coeficientes. |
-| `blk_had_energy_ac`    | Energia AC (total − DC²).                    |
-| `blk_had_max`          | Maior coeficiente absoluto.                  |
-| `blk_had_min`          | Menor coeficiente absoluto.                  |
-| `blk_had_topleft`      | Coeficiente H[0,0] (DC).                     |
-| `blk_had_topright`     | Coef. canto superior direito.                |
-| `blk_had_bottomleft`   | Coef. canto inferior esquerdo.               |
-| `blk_had_bottomright`  | Coef. canto inferior direito.                |
+| Feature             | Description                                                      |
+| ------------------- | ---------------------------------------------------------------- |
+| `blk_min`           | Minimum pixel value in the block.                                |
+| `blk_max`           | Maximum pixel value in the block.                                |
+| `blk_range`         | Range (max − min).                                                |
+| `blk_laplacian_var` | Variance of the Laplacian (indicator of sharpness / blur).       |
 
 ---
 
-# 📦 **Estrutura do Projeto**
+### 4. Complexity / Texture
+
+| Feature       | Description                                                           |
+| ------------- | --------------------------------------------------------------------- |
+| `blk_entropy` | Shannon entropy of the block (texture complexity).                    |
+
+---
+
+### 5. Sobel Gradients (grad_bases_sobel)
+
+| Feature                | Description                                      |
+| ---------------------- | ------------------------------------------------ |
+| `blk_sobel_gv`         | Vertical gradient (horizontal edges).            |
+| `blk_sobel_gh`         | Horizontal gradient (vertical edges).            |
+| `blk_sobel_mag`        | Mean gradient magnitude.                         |
+| `blk_sobel_dir`        | Mean gradient direction (in degrees).            |
+| `blk_sobel_razao_grad` | Ratio gh / gv.                                   |
+
+---
+
+### 6. Prewitt Gradients (grad_bases_prewitt)
+
+| Feature                  | Description                                   |
+| ------------------------ | --------------------------------------------- |
+| `blk_prewitt_gv`         | Vertical gradient via Prewitt.                |
+| `blk_prewitt_gh`         | Horizontal gradient via Prewitt.              |
+| `blk_prewitt_mag`        | Mean magnitude via Prewitt.                   |
+| `blk_prewitt_dir`        | Mean direction via Prewitt.                   |
+| `blk_prewitt_razao_grad` | Ratio gh / gv (Prewitt).                      |
+
+---
+
+### 7. Hadamard Transform (hadamard_bases)
+
+| Feature                | Description                                                       |
+| ---------------------- | ----------------------------------------------------------------- |
+| `blk_had_dc`           | DC coefficient (overall brightness).                              |
+| `blk_had_energy_total` | Sum of squares of all coefficients.                               |
+| `blk_had_energy_ac`    | AC energy (total − DC²).                                           |
+| `blk_had_max`          | Largest absolute coefficient.                                      |
+| `blk_had_min`          | Smallest absolute coefficient.                                     |
+| `blk_had_topleft`      | Coefficient H[0,0] (DC).                                           |
+| `blk_had_topright`     | Top-right corner coefficient.                                      |
+| `blk_had_bottomleft`   | Bottom-left corner coefficient.                                    |
+| `blk_had_bottomright`  | Bottom-right corner coefficient.                                   |
+
+---
+
+## 📦 Project Structure
 
 ```python
 project/
-├── config.py # Caminhos, separadores CSV, configurações globais
-├── features.py # Implementação das funções de extração de features
-├── process_yuv.py # Função principal de leitura do CSV + YUV
+├── config.py         # Paths, CSV separators, global settings
+├── features.py       # Implementation of feature extraction functions
+├── process_yuv.py    # Main routine: read CSV + YUV processing
 ├── README.md
 └── data/
 ```
 
 ---
 
-# ⚙️ **Exemplo de Configuração (config.py)**
+## ⚙️ Example Configuration (`config.py`)
 
 ```python
-# Diretório do projeto
+# Project directory
 PROJECT_FOLDER = '/home/carolinesc/mestrado'
 
-# Arquivos CSV de entrada e saída
+# Input and output CSV files
 csv_input_file = os.path.join(PROJECT_FOLDER, "features.csv")
 csv_output_file = os.path.join(PROJECT_FOLDER, "new-features.csv")
 
@@ -130,7 +130,7 @@ CSV_READ_SEP = ','
 CSV_WRITE_SEP = ';'
 CHUNK_SIZE = 90_000_000
 
-# Colunas obrigatórias no CSV
+# Required CSV columns
 COL_FRAME = 'frame'
 COL_X = 'x'
 COL_Y = 'y'
@@ -139,19 +139,19 @@ COL_HEIGHT = 'Height'
 COL_FRAMEWIDTH = 'FrameWidth'
 COL_FRAMEHEIGHT = 'FrameHeight'
 COL_BITDEPTH = 'BitDepth'
-
-
-▶️ Execução
-python process_yuv.py
-O novo CSV será gerado em: new-features.csv
 ```
+
+▶️ Run
+```bash
+python process_yuv.py
+```
+The new CSV will be generated as: `new-features.csv`
 
 ---
 
-## 🛠️ Implementação em C++
+## 🛠️ C++ Implementation
 
-Além da versão em Python, existe a opção das mesmas rotinas de extração de features em C++ — ideal para integração direta no código do codificador 
+In addition to the Python version, there is an option with the same feature extraction routines implemented in C++ — useful for direct integration into encoder code.
 
-O que a implementação C++ fornece
-- Funções equivalentes às de `features.py`: média, variância, gradientes (Sobel/Prewitt), entropia, variância do Laplaciano e transformada de Hadamard.
-
+What the C++ implementation provides
+- Equivalent functions to those in `features.py`: mean, variance, gradients (Sobel/Prewitt), entropy, Laplacian variance and the Hadamard transform.
