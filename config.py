@@ -1,21 +1,21 @@
 import os
 
-# Flag para ativar/desativar o print dos pixels do bloco
+# Flag to enable/disable printing of block pixels
 PRINT_BLOCK_PIXELS = False
 
-# Configurações de Diretórios
+# Directory configuration
 PROJECT_FOLDER = '/home/carolinesc/mestrado' # '/home/yasminsc/mestrado'
 
-# Arquivos CSV
+# CSV files
 csv_input_file = os.path.join(PROJECT_FOLDER, "features.csv") # compiled_dataset_medium.csv
 csv_output_file = os.path.join(PROJECT_FOLDER, "new-features.csv") # features_from_image.csv
 
-# CSV / processamento configurável
+# CSV / processing configuration
 CSV_READ_SEP = ',' # ;
 CSV_WRITE_SEP = ';'
 CHUNK_SIZE = 90000000
 
-# Nomes de colunas necessárias no CSV
+# Required CSV column names
 COL_VIDEO = 'video' # VideoName
 COL_FRAME = 'frame' # Frame
 COL_X = 'x' # X_Pos
@@ -28,7 +28,7 @@ COL_BITDEPTH = 'BitDepth'
 
 COLS_TO_CHECK = [COL_FRAME, COL_X, COL_Y, COL_WIDTH, COL_HEIGHT, COL_FRAMEWIDTH, COL_FRAMEHEIGHT, COL_BITDEPTH]
 
-# Diretórios dos Vídeos
+# Video directories
 YUV_BASE_FOLDER = '/data/videos/'
 YUV_VIDEO_FOLDERS = {
     '4k': os.path.join(YUV_BASE_FOLDER, '4k'),
@@ -39,7 +39,7 @@ YUV_VIDEO_FOLDERS = {
 
 
 # ==============================
-# Mapeamento de vídeos YUV (exemplos)
+# Mapping of YUV videos (examples)
 # ==============================
 video_paths_yuv = {
     'Vidyo3_1280x720_60': os.path.join(YUV_VIDEO_FOLDERS['720p'], 'Vidyo3_1280x720_60.yuv'),

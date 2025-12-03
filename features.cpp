@@ -28,12 +28,12 @@ inline void fwht_1d(cv::Mat& vec) {
 inline cv::Mat fwht_2d(const cv::Mat& blk) {
     cv::Mat H;
     blk.convertTo(H, CV_32F);
-    // linhas
+    // rows
     for (int r = 0; r < H.rows; r++) {
         cv::Mat row = H.row(r);
         fwht_1d(row);
     }
-    // colunas
+    // columns
     for (int c = 0; c < H.cols; c++) {
         cv::Mat col = H.col(c);
         fwht_1d(col);
@@ -42,7 +42,7 @@ inline cv::Mat fwht_2d(const cv::Mat& blk) {
 }
 
 // =======================================================
-// 1. FEATURE 1 — Média, Variância, StdDev e Soma
+// 1. FEATURE 1 — Mean, Variance, StdDev and Sum
 // =======================================================
 inline std::tuple<double,double,double,double> calculate_basic_features_cv(const cv::Mat& blk)
 {
@@ -81,7 +81,7 @@ inline std::array<double,4> calculate_stats_cv(const cv::Mat& blk)
 }
 
 // =======================================================
-// 3. FEATURE 3 — Gradientes Sobel
+// 3. FEATURE 3 — Sobel Gradients
 // =======================================================
 inline std::array<double,5> calculate_gradients_sobel_cv(const cv::Mat& blk)
 {
@@ -99,7 +99,7 @@ inline std::array<double,5> calculate_gradients_sobel_cv(const cv::Mat& blk)
 }
 
 // =======================================================
-// 4. FEATURE 4 — Gradientes Prewitt
+// 4. FEATURE 4 — Prewitt Gradients
 // =======================================================
 inline std::array<double,5> calculate_gradients_prewitt_cv(const cv::Mat& blk)
 {
@@ -119,7 +119,7 @@ inline std::array<double,5> calculate_gradients_prewitt_cv(const cv::Mat& blk)
 }
 
 // =======================================================
-// 5. FEATURE 5 — Contraste
+// 5. FEATURE 5 — Contrast
 // =======================================================
 inline std::array<double,3> calculate_contrast_features_cv(const cv::Mat& blk)
 {
@@ -129,7 +129,7 @@ inline std::array<double,3> calculate_contrast_features_cv(const cv::Mat& blk)
 }
 
 // =======================================================
-// 6. FEATURE 6 — Nitidez (variância do Laplaciano)
+// 6. FEATURE 6 — Sharpness (Laplacian variance)
 // =======================================================
 inline double calculate_laplacian_var_cv(const cv::Mat& blk)
 {
@@ -144,7 +144,7 @@ inline double calculate_laplacian_var_cv(const cv::Mat& blk)
 
 
 // =======================================================
-// 7. FEATURE 7 — Entropia de Shannon
+// 7. FEATURE 7 — Shannon Entropy
 // =======================================================
 inline double calculate_entropy_cv(const cv::Mat& blk)
 {
@@ -195,7 +195,7 @@ inline HadamardFeatures calculate_hadamard_features(const cv::Mat& blk)
 }
 
 // =======================================================
-// STRUCT PRINCIPAL
+// MAIN STRUCT
 // =======================================================
 struct BlockFeatures {
     double blk_pixel_mean;
@@ -227,7 +227,7 @@ struct BlockFeatures {
 };
 
 // =======================================================
-// EXTRAÇÃO PRINCIPAL
+// MAIN EXTRACTION
 // =======================================================
 inline BlockFeatures extract_block_features(const cv::Mat& blk)
 {
@@ -255,7 +255,7 @@ inline BlockFeatures extract_block_features(const cv::Mat& blk)
 }
 
 // =======================================================
-// IMPRIMIR
+// PRINT
 // =======================================================
 void print_features(const BlockFeatures& f)
 {
@@ -294,7 +294,7 @@ void print_features(const BlockFeatures& f)
 }
 
 // =======================================================
-// MAIN (teste com blocos)
+// MAIN (test with blocks)
 // =======================================================
 
 int main()
