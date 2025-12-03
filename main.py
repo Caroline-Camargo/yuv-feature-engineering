@@ -105,7 +105,7 @@ def process_csv_with_yuv(
                 print(f"[Video: {video_name} | Frame: {frame_num} | CSV rows: {csv_lines}] ERROR reading frame with yuvio: {e}")
                 continue
 
-            # Itera sobre as linhas do CSV (blocos)
+            # Iterate over the lines (blocks) of the CSV file.
             for i, row in group.iterrows():
                 blk_orig = extract_block(Y, row[COL_X], row[COL_Y], row[COL_WIDTH], row[COL_HEIGHT])
                 if blk_orig is None:

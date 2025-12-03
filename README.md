@@ -143,7 +143,7 @@ COL_BITDEPTH = 'BitDepth'
 
 ▶️ Run
 ```bash
-python process_yuv.py
+python main.py
 ```
 The new CSV will be generated as: `new-features.csv`
 

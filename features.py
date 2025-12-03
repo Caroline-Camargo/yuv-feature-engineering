@@ -128,7 +128,7 @@ def calculate_hadamard_block_features(block):
     max_coef = float(np.max(H))
     min_coef = float(np.min(H))
 
-    # Valores nos cantos
+    # Values ​​in the corners
     top_left = float(H[0, 0])
     top_right = float(H[0, -1])
     bottom_left = float(H[-1, 0])
